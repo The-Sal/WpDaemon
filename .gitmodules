@@ -1,3 +1,6 @@
 [submodule "vendor/sockpp"]
 	path = vendor/sockpp
 	url = https://github.com/fpagliughi/sockpp
+[submodule "vendor/libcpr"]
+	path = vendor/libcpr
+	url = https://github.com/libcpr/cpr
