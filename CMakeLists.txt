@@ -23,10 +23,10 @@ add_subdirectory(vendor/json)
 # ────────────────────────────────────────────────────────────────────────
 
 
-add_executable(WpDaemon src/main.cpp
+add_executable(WpDaemon
+        src/main.cpp
         src/binary_management.cpp
-        src/tcp_server.cpp
-)
+        src/tcp_server.cpp)
 target_link_libraries(WpDaemon PRIVATE sockpp-static)
 target_link_libraries(WpDaemon PRIVATE cpr::cpr)
 target_link_libraries(WpDaemon PRIVATE nlohmann_json::nlohmann_json)
