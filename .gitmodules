@@ -4,3 +4,6 @@
 [submodule "vendor/libcpr"]
 	path = vendor/libcpr
 	url = https://github.com/libcpr/cpr
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json
