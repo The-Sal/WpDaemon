@@ -2,11 +2,10 @@
 
 > **Lightweight C++ daemon for managing WireProxy instances in the Argus ecosystem**
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/The-Sal/WpDaemon)
 [![C++](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
 
-WpDaemon is a high-performance C++ TCP server that manages [WireProxy](https://github.com/whyvl/wireproxy) instances for [Argus](https://github.com/The-Sal/Argus). It serves as a drop-in replacement for the original Python-based WireProxy daemon with **100% API compatibility** and a **97% reduction in memory footprint** (1.4-4.4 MB vs 106 MB).
+WpDaemon is a C++ TCP server that manages [WireProxy](https://github.com/whyvl/wireproxy) instances for [Argus](https://github.com/The-Sal/Argus). It serves as a drop-in replacement for the original Python-based WireProxy daemon with **100% API compatibility** and a **97% reduction in memory footprint** (1.4-4.4 MB vs 106 MB).
 
 ---
 
@@ -20,18 +19,13 @@ WpDaemon is a high-performance C++ TCP server that manages [WireProxy](https://g
 - [Usage](#usage)
 - [Protocol Specification](#protocol-specification)
 - [Development](#development)
-- [Contributing](#contributing)
+- [Notes](#notes)
 
 ---
 
 ## Why WpDaemon?
 
 ### The Problem
-
-Argus dispatchers (financial market data servers) often need to route traffic through VPN tunnels for:
-- **Geographic restrictions** (e.g., Polymarket geo-blocking)
-- **Rate limiting circumvention** (rotating VPN endpoints)
-- **Privacy and security** (hiding data source connections)
 
 The original Python implementation (`WireProxyServer`) had several issues:
 
@@ -58,14 +52,14 @@ WpDaemon is a **ground-up C++ rewrite** that:
 
 ### What is Argus?
 
-[**Argus**](https://github.com/The-Sal/Argus) is a high-performance financial market data aggregation system that provides unified access to multiple exchanges through a custom binary protocol (Protocol 2). It follows a **dispatcher paradigm** where server processes connect to financial APIs and multiplex real-time market data to multiple clients.
+[**Argus**](https://github.com/The-Sal/Argus) is a high-performance financial market data system that provides unified access to multiple exchanges through a custom binary protocol (Protocol 2). It follows a **dispatcher paradigm** where server processes connect to financial APIs and multiplex real-time market data to multiple clients.
 
 **Example Argus Architecture:**
 ```
 Client 1 (Python) ──┐
-Client 2 (C++)    ──┼──> TCP 9972 ──> [Polymarket Dispatcher] ──> Polymarket API
+Client 2 (C++)    ──┼──> TCP 9972 ──> [Polymarket Dispatcher] ──> CLOB (Central Limit Order Book)
 Client 3 (Rust)   ──┘                        ↓
-                                      Protocol 2 stream
+                                  Protocol 2 stream / Order Execution
                            (bid/ask/last/volume/20-100 levels of order book)
 ```
 
@@ -464,50 +458,27 @@ nlohmann::json CommandHandler::handle_my_command(const std::string& arg) {
 
 ---
 
-## Contributing
+## Notes
+- As of February 2026, WpDaemon can only be used with mainline (`runtime.py` or Python) Argus. `argus_server` (from argus-swift [branch](https://github.com/The-Sal/Argus/tree/argus-swift)) is not supported.
+because it does not implement the WireProxy subsystem and is still behind [PR#70](https://github.com/The-Sal/Argus/pull/70) [PR#52](https://github.com/The-Sal/Argus/pull/52)
+- WpDaemon is not part of the Argus CI/CD pipeline.
 
-Contributions are welcome! Please see [ARCHITECTURE.md](ARCHITECTURE.md) for design principles and component details.
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Make changes and test
-4. Commit (`git commit -am 'Add new feature'`)
-5. Push to branch (`git push origin feature/my-feature`)
-6. Create a Pull Request
-
-### Code Style
-
-- Follow existing code style (see `.clang-format`)
-- Add comments for public interfaces
-- Update documentation for architectural changes
-- Ensure thread safety for shared state
-
----
-
-## License
-
-Same as the parent [Argus project](https://github.com/The-Sal/Argus).
-
----
 
 ## Related Projects
 
-- **[Argus](https://github.com/The-Sal/Argus)** - High-performance financial market data aggregation system
-- **[WireProxy](https://github.com/whyvl/wireproxy)** - Userspace WireGuard implementation with SOCKS5 proxy
+- **[Argus](https://github.com/The-Sal/Argus)** - High-performance financial market data system
+- **[WireProxy](https://github.com/whyvl/wireproxy)** – Userspace WireGuard implementation with SOCKS5 proxy
+- **[oRoute](https://github.com/the-sal/oRoute)** – A routing optimiser on top of tailscale used by `build_system/`  
 
 ---
 
 ## Acknowledgments
 
 - Built as part of the [Argus](https://github.com/The-Sal/Argus) ecosystem
-- Inspired by the need for lightweight, reliable VPN management
 - Created to solve [issues #65, #64, #56, #54](https://github.com/The-Sal/Argus/issues?q=is%3Aissue+is%3Aopen+label%3Abug) in Argus
 
 ---
 
-**Status**: Production Ready  
-**Platforms**: macOS (amd64/arm64), Linux (amd64/arm64/aarch64)  
-**Memory**: 1.4–4.4 MB (97% reduction vs. Python)  
+**Status**: Ready for prod, not integrated directly into Argus; Argus still uses native daemon for now \
+**Memory**: 1.4–4.4 MB (97% reduction vs. Python)\
 **API**: 100% compatible with Python WireProxyServer
