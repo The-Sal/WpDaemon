@@ -484,7 +484,7 @@ builds/
 ├── debian-12-armv7l
 │   ├── WpDaemon
 │   └── run.log
-└── macos-universal
+└── darwin-universal
     ├── WpDaemon
     └── run.log
 
