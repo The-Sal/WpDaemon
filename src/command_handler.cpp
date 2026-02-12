@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <iostream>
 
 namespace wpmd {
 
@@ -326,8 +327,14 @@ namespace wpmd {
     bool CommandHandler::check_and_cleanup_process() {
         if (state_machine_.get_state() == State::RUNNING && process_) {
             if (!process_->is_alive()) {
-                // Process died unexpectedly
-                log_manager_.finalize("Process died unexpectedly");
+                // Process died unexpectedly - check if it was due to network drop
+                std::string termination_reason = "Process died unexpectedly";
+                if (process_->has_network_drop()) {
+                    termination_reason = "Network drop detected - auto-terminated";
+                    std::cout << "[WpDaemon] " << termination_reason << std::endl;
+                }
+                
+                log_manager_.finalize(termination_reason);
                 process_.reset();
                 current_config_.clear();
                 state_machine_.transition_to(State::IDLE);

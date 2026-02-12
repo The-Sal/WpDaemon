@@ -9,6 +9,9 @@
 #include <signal.h>
 #include <chrono>
 #include <thread>
+#include <fstream>
+#include <iostream>
+#include <regex>
 
 namespace wpmd {
 
@@ -19,6 +22,12 @@ namespace wpmd {
         , pid_(-1) {}
 
     WireProxyProcess::~WireProxyProcess() {
+        // Stop monitoring thread first
+        stop_monitoring_ = true;
+        if (monitor_thread_.joinable()) {
+            monitor_thread_.join();
+        }
+        
         if (pid_ != -1 && !terminated_) {
             // Force kill on destruction if still running
             terminate();
@@ -75,6 +84,11 @@ namespace wpmd {
         // Parent process
         pid_ = pid;
         terminated_ = false;
+        stop_monitoring_ = false;
+        network_drop_detected_ = false;
+        
+        // Start log monitoring thread
+        monitor_thread_ = std::thread(&WireProxyProcess::monitor_log_for_network_errors, this);
         
         return true;
     }
@@ -141,9 +155,83 @@ namespace wpmd {
     }
 
     void WireProxyProcess::cleanup() {
+        // Stop monitoring thread
+        stop_monitoring_ = true;
+        if (monitor_thread_.joinable()) {
+            monitor_thread_.join();
+        }
+        
         terminated_ = true;
         pid_ = -1;
         config_path_.clear();
+    }
+
+    void WireProxyProcess::monitor_log_for_network_errors() {
+        // Wait a bit for log file to be created and process to start
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        
+        auto log_path = log_manager_.get_current_log_path();
+        if (log_path.empty()) {
+            return;
+        }
+        
+        std::ifstream log_file(log_path);
+        if (!log_file.is_open()) {
+            return;
+        }
+        
+        // Patterns to detect network drops
+        std::regex network_unreachable("network is unreachable");
+        std::regex cant_assign_address("can't assign requested address");
+        
+        // Threshold: 5 consecutive error lines triggers termination
+        const int ERROR_THRESHOLD = 5;
+        int consecutive_errors = 0;
+        
+        std::string line;
+        // Seek to end of file to start tailing
+        log_file.seekg(0, std::ios::end);
+        
+        while (!stop_monitoring_) {
+            // Check if there's new content
+            if (std::getline(log_file, line)) {
+                // Check for network drop patterns
+                if (std::regex_search(line, network_unreachable) || 
+                    std::regex_search(line, cant_assign_address)) {
+                    consecutive_errors++;
+                    
+                    std::cout << "[WpDaemon] Network error detected (" << consecutive_errors 
+                              << "/" << ERROR_THRESHOLD << "): " << line << std::endl;
+                    
+                    if (consecutive_errors >= ERROR_THRESHOLD) {
+                        std::lock_guard<std::mutex> lock(monitor_mutex_);
+                        network_drop_detected_ = true;
+                        
+                        std::cout << "[WpDaemon] Network drop threshold reached! "
+                                  << "Auto-terminating WireProxy process PID " << pid_ << std::endl;
+                        
+                        // Terminate the process
+                        if (pid_ != -1 && !terminated_) {
+                            kill(-pid_, SIGTERM);
+                        }
+                        
+                        return;  // Exit monitoring thread
+                    }
+                } else if (line.find("ERROR:") == std::string::npos) {
+                    // Reset counter on non-error lines
+                    consecutive_errors = 0;
+                }
+            } else {
+                // No new data, clear EOF flag and wait
+                log_file.clear();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+    }
+
+    bool WireProxyProcess::has_network_drop() const {
+        std::lock_guard<std::mutex> lock(monitor_mutex_);
+        return network_drop_detected_;
     }
 
 } // namespace wpmd

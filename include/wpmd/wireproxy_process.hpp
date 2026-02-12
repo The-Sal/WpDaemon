@@ -27,6 +27,9 @@
 #include <filesystem>
 #include <chrono>
 #include <memory>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 // Forward declarations
 namespace wpmd {
@@ -138,12 +141,23 @@ namespace wpmd {
          */
         [[nodiscard]] bool has_process() const { return pid_ != -1; }
 
+        /**
+         * @brief Checks if network drop was detected
+         * 
+         * @return true if network errors exceeded threshold
+         */
+        bool has_network_drop() const;
+
     private:
         std::filesystem::path binary_path_;      ///< Path to wireproxy executable
         std::filesystem::path config_path_;      ///< Path to config used for spawn
         LogManager& log_manager_;                ///< Reference for log file handle
         pid_t pid_ = -1;                         ///< Process ID (-1 = no process)
         mutable bool terminated_ = false;        ///< Flag to avoid double-cleanup
+        mutable bool network_drop_detected_ = false;  ///< Network drop detection flag
+        std::thread monitor_thread_;             ///< Background log monitoring thread
+        mutable std::mutex monitor_mutex_;       ///< Protects network_drop_detected_
+        std::atomic<bool> stop_monitoring_{false};  ///< Signal to stop monitor thread
 
         /**
          * @brief Internal cleanup after process termination
@@ -152,6 +166,17 @@ namespace wpmd {
          * Called by terminate() and destructor.
          */
         void cleanup();
+
+        /**
+         * @brief Monitors log file for network drop errors
+         * 
+         * Runs in background thread, tails the log file and detects:
+         * - "network is unreachable"
+         * - "can't assign requested address"
+         * 
+         * When consecutive error threshold is reached, auto-terminates process.
+         */
+        void monitor_log_for_network_errors();
     };
 
 } // namespace wpmd
