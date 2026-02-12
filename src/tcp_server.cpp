@@ -1,74 +1,122 @@
 //
-// Created by Sal Faris on 11/02/2026.
+// Created by opencode on 12/02/2026.
 //
 
-#include "thread"
-#include <utility>
-#include <functional>
-#include "sockpp/tcp_acceptor.h"
-#include <nlohmann/json.hpp>
+#include "wpmd/tcp_server.hpp"
+#include <sockpp/tcp_acceptor.h>
+#include <sockpp/tcp_socket.h>
+#include <thread>
+#include <iostream>
 
-using json = nlohmann::json;
-using string = std::string;
+namespace wpmd {
 
-class TCPServer {
-public:
-    int16_t port = 23888;
-    sockpp::tcp_acceptor acceptor;
-    std::function<json(string)> on_recv;
+    TCPServer::TCPServer(std::function<nlohmann::json(const std::string&)> command_handler)
+        : on_recv_(std::move(command_handler))
+        , acceptor_(std::make_unique<sockpp::tcp_acceptor>()) {}
 
-    explicit TCPServer(const std::function<json(string)>& callback) {
-        const auto addr = sockpp::inet_address("localhost", port);
-        if (const auto did_open = acceptor.open(addr, sockpp::tcp_acceptor::DFLT_QUE_SIZE, sockpp::tcp_acceptor::REUSE); !did_open) {
-            std::cout << "Failed to open acceptor on port " << port << std::endl;
-            exit(1);
-        }
-
-        acceptor.listen(port);
-        if (!acceptor.is_open()) {
-            std::cout << "Failed to open acceptor on port " << port << std::endl;
-            exit(1);
-        }
-        on_recv = callback;
-        std:: cout << "Listening on port " << port << std::endl;
+    TCPServer::~TCPServer() {
+        stop();
     }
 
-    [[noreturn]] void accept_forever() {
-        while (true) {
-            auto client = acceptor.accept();
+    void TCPServer::start() {
+        // Bind to localhost:23888
+        sockpp::inet_address addr("127.0.0.1", port_);
+        
+        if (!acceptor_->open(addr, 5, sockpp::tcp_acceptor::REUSE)) {
+            throw std::runtime_error("Failed to bind to port " + std::to_string(port_));
+        }
+        
+        std::cout << "WireProxy Server listening on 127.0.0.1:" << port_ << std::endl;
+        
+        running_ = true;
+        
+        while (running_) {
+            auto client = acceptor_->accept();
+            
             if (!client.is_ok()) {
-                std::cout << "Failed to accept client" << std::endl;
+                if (running_) {
+                    std::cerr << "Failed to accept client: " << client.error_message() << std::endl;
+                }
+                continue;
             }
-
-            auto client_value = client.release_or_throw();
-            std::thread read_thread(&TCPServer::process_client, this, std::move(client_value));
-            read_thread.detach(); // this would make it 'daemonic' at least the OS will clean it for us
+            
+            // Spawn detached thread for client
+            auto client_value = client.release();
+            std::thread client_thread(&TCPServer::process_client, this, std::move(client_value));
+            client_thread.detach();
         }
     }
 
-private:
-    // this will be a thread
-    void process_client(sockpp::tcp_socket client) const {
+    void TCPServer::stop() {
+        running_ = false;
+        if (acceptor_ && acceptor_->is_open()) {
+            acceptor_->close();
+        }
+    }
 
+    void TCPServer::process_client(sockpp::tcp_socket client) {
+        char buffer[4096];
+        
         while (true) {
-            char buffer[9999];
-            if (auto read_result = client.recv(buffer, sizeof(buffer)); !read_result.is_ok()) {
-                std::cout << "Failed to read from client" << std::endl;
-                client.close();
+            // Receive data
+            auto read_result = client.recv(buffer, sizeof(buffer) - 1);
+            
+            if (!read_result.is_ok()) {
+                // Client disconnected or error
                 break;
             }
-
-            auto response = on_recv(std::string(buffer));
-            if (auto write_result = client.write(response.dump()); !write_result.is_ok()) {
-                std::cout << "====================================" << std::endl;
-                std::cout << "Failed to write to client" << std::endl;
-                std::cout << response.dump() << std::endl;
-                std::cout << write_result.error_message() << std::endl;
-                std::cout << "====================================" << std::endl;
+            
+            size_t bytes_read = read_result.value();
+            if (bytes_read == 0) {
+                // Client closed connection
+                break;
+            }
+            
+            // Null terminate
+            buffer[bytes_read] = '\0';
+            std::string data(buffer, bytes_read);
+            
+            // Parse command
+            auto [command, success] = parse_command(data);
+            
+            nlohmann::json response;
+            
+            if (!success) {
+                // Parsing error
+                response = {
+                    {"CMD", "unknown"},
+                    {"result", nullptr},
+                    {"error", "Newline not found"}
+                };
+            } else {
+                // Process command
+                response = on_recv_(command);
+            }
+            
+            // Send response with newline termination
+            std::string response_str = response.dump() + "\n";
+            auto write_result = client.write(response_str);
+            
+            if (!write_result.is_ok()) {
+                std::cerr << "Failed to send response: " << write_result.error_message() << std::endl;
                 break;
             }
         }
+        
+        // Close client socket
+        client.close();
     }
 
-};
+    std::pair<std::string, bool> TCPServer::parse_command(const std::string& data) const {
+        // Look for newline
+        size_t newline_pos = data.find('\n');
+        if (newline_pos == std::string::npos) {
+            return {"", false};
+        }
+        
+        // Extract command up to newline
+        std::string command = data.substr(0, newline_pos + 1);
+        return {command, true};
+    }
 
+} // namespace wpmd
