@@ -286,12 +286,13 @@ class ILogReader {
   - `x86_64`/`AMD64` → `amd64`
   - `arm64` → `arm64` (Darwin) or `arm` (Linux)
   - `aarch64` → `arm` (Linux)
+  - `armv7l`/`armv6l`/`arm` → `arm` (Linux only)
 
 **Supported Platforms**:
 - `wireproxy_darwin_amd64.tar.gz`
 - `wireproxy_darwin_arm64.tar.gz`
 - `wireproxy_linux_amd64.tar.gz`
-- `wireproxy_linux_arm.tar.gz`
+- `wireproxy_linux_arm.tar.gz` (supports ARM64/ARMv7/ARMv6)
 
 **Download Process**:
 1. Detect platform

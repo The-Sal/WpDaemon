@@ -166,6 +166,13 @@ namespace wpmd {
             } else {
                 arch_name = "arm64";
             }
+        } else if (machine == "armv7l" || machine == "armv6l" || machine == "arm") {
+            // ARMv7 and ARMv6 (32-bit ARM) support
+            if (os_name == "linux") {
+                arch_name = "arm";
+            } else {
+                throw std::runtime_error("ARMv7/ARMv6 only supported on Linux");
+            }
         } else {
             throw std::runtime_error("Unsupported architecture: " + machine);
         }
