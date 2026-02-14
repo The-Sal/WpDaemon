@@ -163,18 +163,33 @@ namespace wpmd {
 
         /**
          * @brief Handles available_confs command
-         * 
+         *
          * Command: available_confs:
-         * 
+         *
          * Lists all .conf files in ~/.argus/wireproxy_confs/
-         * 
+         *
          * Response:
          *   result: {"count": N, "configs": ["...", "..."]}
          *   error: null
-         * 
+         *
          * @return nlohmann::json Response object
          */
         nlohmann::json handle_available_confs();
+
+        /**
+         * @brief Handles whoami command
+         *
+         * Command: whoami:
+         *
+         * Returns version and implementation information
+         *
+         * Response:
+         *   result: {"version": "...", "implementation": "C++"}
+         *   error: null
+         *
+         * @return nlohmann::json Response object
+         */
+        nlohmann::json handle_whoami();
 
         /**
          * @brief Checks if current process is alive and cleans up if dead

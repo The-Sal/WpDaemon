@@ -210,6 +210,68 @@ make WpDaemon -j$(nproc)
 ./WpDaemon
 ```
 
+### Using the Build System (Recommended)
+
+The `build_system/` directory contains scripts for building WpDaemon across all supported platforms. This is the **recommended and easiest way** to build the project, especially for cross-platform builds.
+
+```
+build_system/
+├── script.sh       # Main build script
+└── vm_builder.py   # VM builder for remote builds
+```
+
+#### Quick Build
+
+```bash
+# From project root
+bash build_system/script.sh
+```
+
+This will:
+1. Check for required dependencies (cmake, meson, compiler)
+2. Configure and build the project with Release flags
+3. Scrub hardcoded paths from the binary for reproducibility
+4. Output the binary to `exports/WpDaemon`
+
+**Use the `exports/` folder** - the build script places the final binary in `exports/WpDaemon`.
+
+#### Features
+
+- **Cross-platform**: Works on macOS (arm64/x86_64) and Linux (amd64/arm64/armv7)
+- **Path scrubbing**: Removes build machine paths from the binary
+- **Release optimizations**: Builds with `-O3` and reproducible flags
+- **Automatic cleanup**: Removes temporary files after build
+
+#### VM Builder for Multi-Platform Builds
+
+`vm_builder.py` builds WpDaemon on multiple remote VMs in parallel:
+
+```bash
+# Configure VMs in build_machine.json
+[
+  {"host": "user@192.168.1.10", "password": "secret"},
+  {"host": "user@192.168.1.11", "password": "secret"}
+]
+
+# Run parallel builds
+python build_system/vm_builder.py
+```
+
+**Flow per VM:**
+1. Optionally find a faster route via [oRoute](https://github.com/the-sal/oRoute)
+2. Rsync project to a fresh tmp dir on the remote
+3. Execute `script.sh` on the remote
+4. Rsync `exports/` back to `./builds/<vm_name>/`
+5. Clean up tmp dir on success
+
+This is the method used to build all release binaries across different platforms.
+
+**Supported Platforms for VM Builds:**
+- Debian 12 (Bookworm) aarch64/armv7
+- macOS universal (arm64 + x86_64)
+
+See `build_machine.json` for VM configuration format.
+
 **Output:**
 ```
 ========================================
@@ -420,11 +482,37 @@ make WpDaemon
 
 ### Running Tests
 
+#### Integration Tests
+
 ```bash
 # Terminal 1: Start daemon
 ./WpDaemon
 
-# Terminal 2: Run integration tests
+# Terminal 2: Run integration tests (Python 3.7+, stdlib only)
+python tests/test_daemon.py
+
+# Or with unittest
+python -m unittest tests.test_daemon -v
+```
+
+The test suite uses only Python standard library and covers:
+- `whoami` - Version and implementation info
+- `available_confs` - Listing configurations
+- `state` - Checking daemon status
+- `spin_up`/`spin_down` - Process lifecycle
+- Error handling for invalid configs
+
+Environment variables:
+- `WPDAEMON_HOST` - Host to connect to (default: 127.0.0.1)
+- `WPDAEMON_PORT` - Port to connect to (default: 23888)
+
+#### Manual Testing
+
+```bash
+# Terminal 1: Start daemon
+./WpDaemon
+
+# Terminal 2: Run shell-based tests
 ./test_suite.sh
 ```
 

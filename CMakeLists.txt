@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
-project(WpDaemon)
+project(WpDaemon VERSION 1.0.1)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Define version macros
+add_compile_definitions(WPDAEMON_VERSION="${PROJECT_VERSION}")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 

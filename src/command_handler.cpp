@@ -91,6 +91,8 @@ namespace wpmd {
                 return handle_state();
             } else if (cmd == "available_confs") {
                 return handle_available_confs();
+            } else if (cmd == "whoami") {
+                return handle_whoami();
             } else {
                 return {
                     {"CMD", cmd},
@@ -313,12 +315,23 @@ namespace wpmd {
 
     nlohmann::json CommandHandler::handle_available_confs() {
         auto configs = config_manager_.list_configs();
-        
+
         return {
             {"CMD", "available_confs"},
             {"result", {
                 {"count", configs.size()},
                 {"configs", configs}
+            }},
+            {"error", nullptr}
+        };
+    }
+
+    nlohmann::json CommandHandler::handle_whoami() {
+        return {
+            {"CMD", "whoami"},
+            {"result", {
+                {"version", WPDAEMON_VERSION},
+                {"implementation", "C++"}
             }},
             {"error", nullptr}
         };

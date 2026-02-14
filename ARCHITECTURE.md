@@ -547,6 +547,104 @@ target_link_libraries(WpDaemon PRIVATE
 
 ---
 
+## Build System
+
+The `build_system/` directory contains the official build infrastructure for WpDaemon.
+
+### Overview
+
+```
+build_system/
+├── script.sh       # Main build script for local builds
+└── vm_builder.py   # Multi-VM parallel builder for releases
+```
+
+**Use this build system** - it is the recommended and easiest way to build WpDaemon across all supported platforms.
+
+### Build Script (script.sh)
+
+Located at `build_system/script.sh`, this script automates the entire build process.
+
+**Usage:**
+```bash
+bash build_system/script.sh
+```
+
+**What it does:**
+1. **Dependency Check**: Verifies cmake, meson, and compiler are available
+2. **Path Remapping**: Sets `-ffile-prefix-map` flags to make build reproducible
+3. **CMake Configure**: Creates Release build with path scrubbing
+4. **Compilation**: Builds with `-j$(nproc)` for parallel compilation
+5. **Binary Output**: Moves `WpDaemon` to `exports/WpDaemon`
+6. **Path Scrubbing**: Removes hardcoded paths from the binary using Python
+7. **Verification**: Confirms no user-specific paths remain in binary
+
+**Key Features:**
+- Works on macOS and Linux
+- Removes build machine paths from binary (reproducibility)
+- Creates output in `exports/` directory
+- Handles Linux-specific dependency checks
+
+### VM Builder (vm_builder.py)
+
+Located at `build_system/vm_builder.py`, this script builds WpDaemon on multiple remote VMs in parallel.
+
+**Usage:**
+```bash
+python build_system/vm_builder.py
+```
+
+**Configuration (build_machine.json):**
+```json
+[
+  {"host": "user@192.168.1.10", "password": "secret"},
+  {"host": "user@192.168.1.11", "password": "secret"}
+]
+```
+
+**Flow per VM:**
+1. **Route Resolution** (optional): Uses [oRoute](https://github.com/the-sal/oRoute) to find faster local routes
+2. **Sync Project**: Rsyncs project to `/tmp/vm_runner_<uuid>/` on remote
+3. **Sync Script**: Sends `script.sh` to remote
+4. **Execute Build**: Runs `script.sh` with `bash -e` (exits on any failure)
+5. **Verify Output**: Checks `exports/` directory was created
+6. **Pull Results**: Rsyncs `exports/` back to `./builds/<vm_name>/`
+7. **Cleanup**: Removes tmp dir on success (leaves on failure for debugging)
+
+**Output Structure:**
+```
+builds/
+├── debian-12-aarch64/
+│   ├── WpDaemon
+│   └── run.log
+└── darwin-universal/
+    ├── WpDaemon
+    └── run.log
+```
+
+**Concurrency:**
+Uses `ThreadPoolExecutor` to build on all VMs in parallel. Each VM is identified by OS version, architecture, and hostname.
+
+### Why Use the Build System?
+
+1. **Reproducibility**: Scrubs build machine paths from binaries
+2. **Cross-Platform**: Single script builds on macOS and Linux
+3. **Release Ready**: Creates clean binaries suitable for distribution
+4. **Parallel Builds**: VM builder builds all platforms simultaneously
+5. **Verification**: Automatically verifies no hardcoded paths remain
+
+### Manual Build vs Build System
+
+| Aspect | Manual CMake | Build System |
+|--------|-------------|--------------|
+| Path scrubbing | No | Yes |
+| Release flags | Manual | Automatic |
+| Output location | `build/` | `exports/` |
+| Cross-platform | Per-platform | Unified |
+| Multi-VM builds | No | Yes (vm_builder.py) |
+
+---
+
 ## Development Guide
 
 ### Adding a New Command
@@ -667,6 +765,35 @@ make WpDaemon
 ---
 
 ## Testing
+
+### Python Integration Tests (Recommended)
+
+Located in `tests/`, these tests use only Python standard library.
+
+**Requirements:**
+- Python 3.7+
+- WpDaemon running on localhost:23888
+
+**Run tests:**
+```bash
+# Direct execution
+python tests/test_daemon.py
+
+# Using unittest
+python -m unittest tests.test_daemon -v
+```
+
+**Test Coverage:**
+- `test_whoami` - Version and implementation info
+- `test_available_confs` - Config listing
+- `test_state` - Status checking
+- `test_spin_up_nonexistent_config` - Error handling
+- `test_spin_down_when_not_running` - Idle state handling
+- `test_spin_up_down_lifecycle` - Full process lifecycle
+
+**Environment Variables:**
+- `WPDAEMON_HOST` - Host to connect to (default: 127.0.0.1)
+- `WPDAEMON_PORT` - Port to connect to (default: 23888)
 
 ### Manual Test with netcat
 
