@@ -157,6 +157,7 @@ public:
 - `spin_down:` - Stop WireProxy
 - `state:` - Get current status
 - `available_confs:` - List configurations
+- `whoami:` - Returns version and implementation info
 
 **Thread Safety**: Mutex protects all operations (only one command executes at a time)
 

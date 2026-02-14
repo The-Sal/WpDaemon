@@ -383,6 +383,7 @@ CMD:ARG1,ARG2,...\n
 | `spin_down` | *(none)* | Stop running WireProxy instance |
 | `state` | *(none)* | Get current WireProxy status |
 | `available_confs` | *(none)* | List available configurations |
+| `whoami` | *(none)* | Returns version and implementation info |
 
 ### Examples
 
@@ -418,11 +419,24 @@ Response: {
 
 **Error Response:**
 ```
-Request:  spin_up:nonexistent.conf\n
+Request:  spin_up:nonexistent.conf
 Response: {
   "CMD": "spin_up",
   "result": null,
   "error": "Configuration not found: nonexistent.conf"
+}
+```
+
+**Whoami:**
+```
+Request:  whoami:
+Response: {
+  "CMD": "whoami",
+  "result": {
+    "version": "1.0.0",
+    "implementation": "C++"
+  },
+  "error": null
 }
 ```
 
