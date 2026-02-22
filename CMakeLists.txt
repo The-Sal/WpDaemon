@@ -41,6 +41,10 @@ set(SOURCES
         src/wireproxy_process.cpp
         src/command_handler.cpp
         src/tcp_server.cpp
+        src/audit_logger.cpp
+        src/arg_parser.cpp
+        src/interactive_cli.cpp
+        src/daemonizer.cpp
 )
 
 add_executable(WpDaemon ${SOURCES})
