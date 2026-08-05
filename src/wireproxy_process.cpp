@@ -1,7 +1,3 @@
-//
-// Created by opencode on 12/02/2026.
-//
-
 #include "wpmd/wireproxy_process.hpp"
 #include "wpmd/log_manager.hpp"
 #include <unistd.h>

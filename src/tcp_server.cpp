@@ -1,7 +1,3 @@
-//
-// Created by opencode on 12/02/2026.
-//
-
 #include "wpmd/tcp_server.hpp"
 #include <sockpp/tcp_acceptor.h>
 #include <sockpp/tcp_socket.h>

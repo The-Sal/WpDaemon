@@ -1,10 +1,6 @@
-//
-// Created by opencode on 22/02/2026.
-//
 
 #include "wpmd/arg_parser.hpp"
 #include <iostream>
-#include <cstring>
 
 namespace wpmd {
 

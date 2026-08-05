@@ -1,7 +1,3 @@
-//
-// Created by opencode on 12/02/2026.
-//
-
 #include "wpmd/binary_manager.hpp"
 #include "wpmd/utils.hpp"
 #include <cpr/cpr.h>

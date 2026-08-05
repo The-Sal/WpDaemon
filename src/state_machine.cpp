@@ -1,7 +1,3 @@
-//
-// Created by opencode on 12/02/2026.
-//
-
 #include "wpmd/state_machine.hpp"
 
 namespace wpmd {

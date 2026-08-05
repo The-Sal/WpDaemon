@@ -1,7 +1,3 @@
-//
-// Created by opencode on 22/02/2026.
-//
-
 #include "wpmd/audit_logger.hpp"
 #include <iostream>
 #include <deque>

@@ -1,18 +1,11 @@
-//
-// Created by opencode on 22/02/2026.
-//
-
 #include "wpmd/daemonizer.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <cstring>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <libgen.h>
-#include <limits.h>
 #include <sockpp/tcp_connector.h>
 #include <sockpp/inet_address.h>
 

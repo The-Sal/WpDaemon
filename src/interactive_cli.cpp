@@ -1,7 +1,3 @@
-//
-// Created by opencode on 22/02/2026.
-//
-
 #include "wpmd/interactive_cli.hpp"
 #include "wpmd/daemonizer.hpp"
 #include <iostream>

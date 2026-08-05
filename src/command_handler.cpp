@@ -1,7 +1,3 @@
-//
-// Created by opencode on 12/02/2026.
-//
-
 #include "wpmd/command_handler.hpp"
 #include "wpmd/state_machine.hpp"
 #include "wpmd/config_manager.hpp"
